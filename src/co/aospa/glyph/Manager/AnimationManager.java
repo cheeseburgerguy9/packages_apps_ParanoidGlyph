@@ -151,6 +151,31 @@ public final class AnimationManager {
         }
     }
 
+    public static void playRecordingBlink(Context context) {
+        if (!check("recording_blink", false))
+            return;
+
+        acquireWakeLock(context);
+        StatusManager.setAnimationActive(true);
+
+        try {
+            for (int i = 0; i < 3; i++) {
+                if (checkInterruption("recording_blink")) throw new InterruptedException();
+                FileUtils.writeSingleLed(17, 4000);
+                Thread.sleep(200);
+                FileUtils.writeSingleLed(17, 0);
+                Thread.sleep(200);
+            }
+        } catch (InterruptedException e) {
+             if (DEBUG) Log.d(TAG, "Exception while playing animation, interrupted | name: recording_blink");
+        } finally {
+            FileUtils.writeSingleLed(17, 0);
+            StatusManager.setAnimationActive(false);
+            if (DEBUG) Log.d(TAG, "Done playing animation | name: recording_blink");
+            releaseWakeLock();
+        }
+    }
+
     public static void playCharging(int batteryLevel, boolean wait) {
         if (!check("charging", wait))
             return;
@@ -390,6 +415,13 @@ public final class AnimationManager {
 
     public static void playEssential() {
         if (DEBUG) Log.d(TAG, "Playing Essential Animation");
+
+        if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
+             StatusManager.setEssentialLedActive(true);
+             FileUtils.writeSingleLed(17, 4000);
+             return;
+        }
+
         if (!StatusManager.isEssentialLedActive()) {
             submit(() -> {
                 if (!check("essential", true))
@@ -438,6 +470,11 @@ public final class AnimationManager {
     public static void stopEssential() {
         if (DEBUG) Log.d(TAG, "Disabling Essential Animation");
         StatusManager.setEssentialLedActive(false);
+
+        if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
+             FileUtils.writeSingleLed(17, 0);
+        }
+
         if (!StatusManager.isAnimationActive() && !StatusManager.isAllLedActive()) {
             if (Constants.getDevice().equals("phone3a")) {
                 updateLedFrame(new int[36]);
