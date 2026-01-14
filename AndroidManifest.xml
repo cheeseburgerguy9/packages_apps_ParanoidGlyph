@@ -23,6 +23,7 @@
     android:sharedUserId="android.uid.system">
 
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -54,6 +55,14 @@
             <intent-filter>
                 <action android:name="co.aospa.glyph.ACTION_SCHEDULE_START" />
                 <action android:name="co.aospa.glyph.ACTION_SCHEDULE_END" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".Manager.GlyphScheduleManager$ZenModeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.app.action.INTERRUPTION_FILTER_CHANGED" />
             </intent-filter>
         </receiver>
 

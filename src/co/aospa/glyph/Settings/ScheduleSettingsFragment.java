@@ -24,6 +24,7 @@ import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.widget.CompoundButton;
 
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
 
@@ -37,10 +38,11 @@ import co.aospa.glyph.Utils.ServiceUtils;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment 
+public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
         implements CompoundButton.OnCheckedChangeListener {
 
     private MainSwitchPreference mScheduleSwitch;
+    private ListPreference mModePreference;
     private Preference mDaysPreference;
     private Preference mStartTimePreference;
     private Preference mEndTimePreference;
@@ -53,6 +55,7 @@ public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
         getActivity().setTitle("Glyph Schedule");
 
         mScheduleSwitch = findPreference("glyph_schedule_enable");
+        mModePreference = findPreference("glyph_schedule_mode");
         mDaysPreference = findPreference("glyph_schedule_days");
         mStartTimePreference = findPreference("glyph_schedule_start_time");
         mEndTimePreference = findPreference("glyph_schedule_end_time");
@@ -61,6 +64,14 @@ public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
         if (mScheduleSwitch != null) {
             mScheduleSwitch.setChecked(GlyphScheduleManager.isScheduleEnabled(requireContext()));
             mScheduleSwitch.addOnSwitchChangeListener(this);
+        }
+
+        if (mModePreference != null) {
+            mModePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                GlyphScheduleManager.setScheduleMode(requireContext(), (String) newValue);
+                updatePreferences();
+                return true;
+            });
         }
 
         if (mDaysPreference != null) {
@@ -98,7 +109,7 @@ public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
 
     private void showTimePickerDialog(boolean isStartTime) {
         int hour, minute;
-        
+
         if (isStartTime) {
             hour = GlyphScheduleManager.getScheduleStartHour(requireContext());
             minute = GlyphScheduleManager.getScheduleStartMinute(requireContext());
@@ -162,12 +173,17 @@ public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
 
 
     private void updatePreferences() {
+        String mode = GlyphScheduleManager.getScheduleMode(requireContext());
+        boolean isCustom = GlyphScheduleManager.MODE_CUSTOM.equals(mode);
+
         if (mDaysPreference != null) {
+            mDaysPreference.setVisible(isCustom);
             Set<String> selectedDays = GlyphScheduleManager.getScheduleDays(requireContext());
             mDaysPreference.setSummary(GlyphScheduleManager.getScheduleDaysFormatted(requireContext()));
         }
 
         if (mStartTimePreference != null) {
+            mStartTimePreference.setVisible(isCustom);
             int hour = GlyphScheduleManager.getScheduleStartHour(requireContext());
             int minute = GlyphScheduleManager.getScheduleStartMinute(requireContext());
             mStartTimePreference.setSummary(
@@ -175,6 +191,7 @@ public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
         }
 
         if (mEndTimePreference != null) {
+            mEndTimePreference.setVisible(isCustom);
             int hour = GlyphScheduleManager.getScheduleEndHour(requireContext());
             int minute = GlyphScheduleManager.getScheduleEndMinute(requireContext());
             mEndTimePreference.setSummary(
@@ -183,20 +200,30 @@ public class ScheduleSettingsFragment extends SettingsBasePreferenceFragment
 
         if (mStatusPreference != null) {
             boolean scheduleEnabled = GlyphScheduleManager.isScheduleEnabled(requireContext());
-            boolean scheduleActiveToday = GlyphScheduleManager.isScheduleActiveToday(requireContext());
             boolean scheduleActive = GlyphScheduleManager.isScheduleCurrentlyActive(requireContext());
-            
+
             String status;
             if (!scheduleEnabled) {
-                status = "Schedule disabled";
-            } else if (!scheduleActiveToday) {
-                status = "⏸ Not active today";
-            } else if (scheduleActive) {
-                status = "⏸ Schedule active - Glyph disabled (Torch still works)";
+                status = getString(R.string.glyph_settings_schedule_disabled);
+            } else if (!isCustom) {
+                // Bedtime Mode
+                 if (scheduleActive) {
+                    status = "⏸ " + getString(R.string.glyph_settings_schedule_bedtime_active);
+                } else {
+                    status = "✓ " + getString(R.string.glyph_settings_schedule_bedtime_inactive);
+                }
             } else {
-                status = "✓ Schedule inactive - Glyph enabled";
+                // Custom Schedule
+                boolean scheduleActiveToday = GlyphScheduleManager.isScheduleActiveToday(requireContext());
+                if (!scheduleActiveToday) {
+                    status = "⏸ " + getString(R.string.glyph_settings_schedule_not_active_today);
+                } else if (scheduleActive) {
+                    status = "⏸ " + getString(R.string.glyph_settings_schedule_active);
+                } else {
+                    status = "✓ " + getString(R.string.glyph_settings_schedule_inactive);
+                }
             }
-            
+
             mStatusPreference.setSummary(status);
         }
     }
