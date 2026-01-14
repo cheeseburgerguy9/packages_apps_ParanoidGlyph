@@ -17,6 +17,7 @@
 package co.aospa.glyph.Manager;
 
 import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -29,6 +30,7 @@ import androidx.preference.PreferenceManager;
 
 import co.aospa.glyph.Constants.Constants;
 import co.aospa.glyph.Utils.ServiceUtils;
+import co.aospa.glyph.R;
 
 import java.util.Calendar;
 import java.util.HashSet;
@@ -46,6 +48,10 @@ public final class GlyphScheduleManager {
     private static final String PREF_SCHEDULE_END_MINUTE = "glyph_schedule_end_minute";
     private static final String PREF_SCHEDULE_ACTIVE = "glyph_schedule_currently_active";
     private static final String PREF_SCHEDULE_DAYS = "glyph_schedule_days";
+    private static final String PREF_SCHEDULE_MODE = "glyph_schedule_mode";
+
+    public static final String MODE_CUSTOM = "custom";
+    public static final String MODE_BEDTIME = "bedtime";
 
     private static final String ACTION_SCHEDULE_START = "co.aospa.glyph.ACTION_SCHEDULE_START";
     private static final String ACTION_SCHEDULE_END = "co.aospa.glyph.ACTION_SCHEDULE_END";
@@ -71,9 +77,15 @@ public final class GlyphScheduleManager {
         prefs.edit().putBoolean(PREF_SCHEDULE_ENABLED, enabled).apply();
 
         if (enabled) {
-            setupScheduleAlarms(context);
-            if (isWithinSchedulePeriod(context)) {
-                applyScheduleStart(context);
+            if (MODE_CUSTOM.equals(getScheduleMode(context))) {
+                setupScheduleAlarms(context);
+                if (isWithinSchedulePeriod(context)) {
+                    applyScheduleStart(context);
+                }
+            } else {
+                // Bedtime mode - check logic will handle it
+                ServiceUtils.checkGlyphService();
+                updateTorchTile(context);
             }
         } else {
             cancelScheduleAlarms(context);
@@ -83,6 +95,39 @@ public final class GlyphScheduleManager {
                 updateTorchTile(context);
             }
         }
+    }
+
+    public static String getScheduleMode(Context context) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        return prefs.getString(PREF_SCHEDULE_MODE, MODE_CUSTOM);
+    }
+
+    public static void setScheduleMode(Context context, String mode) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        prefs.edit().putString(PREF_SCHEDULE_MODE, mode).apply();
+
+        if (isScheduleEnabled(context)) {
+             if (MODE_CUSTOM.equals(mode)) {
+                 setupScheduleAlarms(context);
+                 // Check if we should be active now
+                 if (isWithinSchedulePeriod(context)) {
+                     applyScheduleStart(context);
+                 } else {
+                     applyScheduleEnd(context);
+                 }
+             } else {
+                 cancelScheduleAlarms(context);
+                 ServiceUtils.checkGlyphService();
+                 updateTorchTile(context);
+             }
+        }
+    }
+
+    public static boolean isBedtimeModeActive(Context context) {
+        NotificationManager nm = context.getSystemService(NotificationManager.class);
+        if (nm == null) return false;
+        int filter = nm.getCurrentInterruptionFilter();
+        return filter != NotificationManager.INTERRUPTION_FILTER_ALL;
     }
 
     public static int getScheduleStartHour(Context context) {
@@ -158,7 +203,7 @@ public final class GlyphScheduleManager {
 
         Calendar now = Calendar.getInstance();
         int currentDay = now.get(Calendar.DAY_OF_WEEK);
-        
+
         Set<String> enabledDays = getScheduleDays(context);
         return enabledDays.contains(String.valueOf(currentDay));
     }
@@ -166,6 +211,11 @@ public final class GlyphScheduleManager {
     public static boolean isScheduleCurrentlyActive(Context context) {
         if (!isScheduleEnabled(context)) {
             return false;
+        }
+
+        String mode = getScheduleMode(context);
+        if (MODE_BEDTIME.equals(mode)) {
+            return isBedtimeModeActive(context);
         }
 
         if (!isScheduleActiveToday(context)) {
@@ -325,7 +375,7 @@ public final class GlyphScheduleManager {
         ServiceUtils.checkGlyphService();
         updateTorchTile(context);
     }
-    
+
     private static void updateTorchTile(Context context) {
         try {
             Intent intent = new Intent("co.aospa.glyph.UPDATE_TORCH_TILE");
@@ -342,7 +392,7 @@ public final class GlyphScheduleManager {
         Calendar calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, hour);
         calendar.set(Calendar.MINUTE, minute);
-        
+
         // Use system preference for 12/24 hour format
         java.text.DateFormat timeFormat = DateFormat.getTimeFormat(context);
         return timeFormat.format(calendar.getTime());
@@ -357,38 +407,38 @@ public final class GlyphScheduleManager {
 
     public static String getScheduleDaysFormatted(Context context) {
         Set<String> days = getScheduleDays(context);
-        
+
         if (days.size() == 7) {
             return "Every day";
         }
-        
+
         if (days.size() == 0) {
             return "No days selected";
         }
-        
+
         Set<String> weekdays = new HashSet<>();
         weekdays.add(String.valueOf(MONDAY));
         weekdays.add(String.valueOf(TUESDAY));
         weekdays.add(String.valueOf(WEDNESDAY));
         weekdays.add(String.valueOf(THURSDAY));
         weekdays.add(String.valueOf(FRIDAY));
-        
+
         if (days.equals(weekdays)) {
             return "Weekdays (Mon-Fri)";
         }
-        
+
         Set<String> weekends = new HashSet<>();
         weekends.add(String.valueOf(SATURDAY));
         weekends.add(String.valueOf(SUNDAY));
-        
+
         if (days.equals(weekends)) {
             return "Weekends (Sat-Sun)";
         }
-        
+
         StringBuilder result = new StringBuilder();
         String[] dayNames = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
         int[] dayOrder = {SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY};
-        
+
         for (int i = 0; i < dayOrder.length; i++) {
             if (days.contains(String.valueOf(dayOrder[i]))) {
                 if (result.length() > 0) {
@@ -397,7 +447,7 @@ public final class GlyphScheduleManager {
                 result.append(dayNames[i]);
             }
         }
-        
+
         return result.toString();
     }
 
@@ -411,12 +461,17 @@ public final class GlyphScheduleManager {
 
     public static String getScheduleSummary(Context context) {
         if (!isScheduleEnabled(context)) {
-            return "Schedule disabled";
+            return context.getString(R.string.glyph_settings_schedule_disabled);
         }
-        
+
+        String mode = getScheduleMode(context);
+        if (MODE_BEDTIME.equals(mode)) {
+             return context.getString(R.string.glyph_settings_schedule_mode_bedtime_summary);
+        }
+
         String days = getScheduleDaysFormatted(context);
         String time = getScheduleTimeRange(context);
-        
+
         return days + " • " + time;
     }
 
@@ -437,6 +492,18 @@ public final class GlyphScheduleManager {
                 applyScheduleStart(context);
             } else if (ACTION_SCHEDULE_END.equals(action)) {
                 applyScheduleEnd(context);
+            }
+        }
+    }
+
+    public static class ZenModeReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED.equals(intent.getAction())) {
+                if (isScheduleEnabled(context) && MODE_BEDTIME.equals(getScheduleMode(context))) {
+                    ServiceUtils.checkGlyphService();
+                    updateTorchTile(context);
+                }
             }
         }
     }

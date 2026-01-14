@@ -22,6 +22,14 @@
         android:key="glyph_schedule_enable"
         android:title="@string/glyph_settings_schedule_enable_title"/>
 
+    <androidx.preference.ListPreference
+        android:key="glyph_schedule_mode"
+        android:title="@string/glyph_settings_schedule_mode_title"
+        android:entries="@array/glyph_schedule_mode_entries"
+        android:entryValues="@array/glyph_schedule_mode_values"
+        android:defaultValue="custom"
+        android:dependency="glyph_schedule_enable" />
+
     <androidx.preference.Preference
         android:key="glyph_schedule_days"
         android:title="@string/glyph_settings_active_days_title"
