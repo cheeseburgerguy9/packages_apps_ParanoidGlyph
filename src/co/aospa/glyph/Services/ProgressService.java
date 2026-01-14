@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.media.session.MediaController;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
+import android.os.SystemClock;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -55,6 +56,8 @@ public class ProgressService extends Service {
     private Context mContext;
 
     private MediaSessionManager mMediaSessionManager;
+    private List<MediaController> mCachedControllers;
+    private MediaSessionManager.OnActiveSessionsChangedListener mActiveSessionsChangedListener;
 
     private Map<String, ProgressInfo> mActiveProgress = new HashMap<>();
     private int mLastDisplayedProgress = -1;
@@ -109,11 +112,12 @@ public class ProgressService extends Service {
         mThreadHandler = new Handler(looper);
 
         mMediaSessionManager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
+        mActiveSessionsChangedListener = this::updateActiveMediaController;
 
         IntentFilter progressFilter = new IntentFilter();
         progressFilter.addAction(ACTION_PROGRESS_NOTIFICATION);
         progressFilter.addAction(ACTION_PROGRESS_REMOVED);
-        
+
         try {
             registerReceiver(mProgressReceiver, progressFilter, Context.RECEIVER_NOT_EXPORTED);
             if (DEBUG) Log.d(TAG, "BroadcastReceiver registered");
@@ -179,7 +183,7 @@ public class ProgressService extends Service {
 
         try {
             long currentTime = System.currentTimeMillis();
-            mActiveProgress.entrySet().removeIf(entry -> 
+            mActiveProgress.entrySet().removeIf(entry ->
                 currentTime - entry.getValue().lastUpdate > 5000);
 
             ProgressInfo currentProgress = null;
@@ -195,11 +199,11 @@ public class ProgressService extends Service {
 
                 if (!key.equals(mLastDisplayedKey) || Math.abs(progress - mLastDisplayedProgress) >= 3) {
                     if (DEBUG) Log.d(TAG, "Progress: " + progress + "% (" + currentProgress.packageName + ")");
-                    
+
                     mLastDisplayedProgress = progress;
                     mLastDisplayedKey = key;
 
-                    if (!StatusManager.isVolumeAnimationActive() && 
+                    if (!StatusManager.isVolumeAnimationActive() &&
                         (!SettingsManager.isGlyphProgressMusicEnabled() || mLastMusicProgress == 0)) {
                         playProgressAnimation(progress, 1);
                     }
@@ -219,6 +223,7 @@ public class ProgressService extends Service {
     private void startMusicProgressMonitoring() {
         if (!SettingsManager.isGlyphProgressMusicEnabled()) return;
 
+        registerMediaListener();
         mMusicProgressChecker = new Runnable() {
             @Override
             public void run() {
@@ -230,12 +235,31 @@ public class ProgressService extends Service {
     }
 
     private void stopMusicProgressMonitoring() {
+        unregisterMediaListener();
         if (mMusicProgressChecker != null) {
             mThreadHandler.removeCallbacks(mMusicProgressChecker);
             if (StatusManager.getProgressType() == 2) {
                 mThreadHandler.post(dismissProgress);
             }
         }
+    }
+
+    private void registerMediaListener() {
+        ComponentName notificationListener = new ComponentName(mContext,
+                co.aospa.glyph.Services.NotificationService.class);
+        mMediaSessionManager.addOnActiveSessionsChangedListener(mActiveSessionsChangedListener, notificationListener, mThreadHandler);
+        updateActiveMediaController(mMediaSessionManager.getActiveSessions(notificationListener));
+    }
+
+    private void unregisterMediaListener() {
+        if (mActiveSessionsChangedListener != null) {
+            mMediaSessionManager.removeOnActiveSessionsChangedListener(mActiveSessionsChangedListener);
+        }
+        mCachedControllers = null;
+    }
+
+    private void updateActiveMediaController(List<MediaController> controllers) {
+        mCachedControllers = controllers;
     }
 
     private void checkMusicProgress() {
@@ -248,6 +272,11 @@ public class ProgressService extends Service {
 
                 if (state.getState() == PlaybackState.STATE_PLAYING) {
                     long position = state.getPosition();
+                    long timeDelta = SystemClock.elapsedRealtime() - state.getLastPositionUpdateTime();
+                    if (timeDelta > 0) {
+                        position += (long) (timeDelta * state.getPlaybackSpeed());
+                    }
+
                     long duration = controller.getMetadata() != null ?
                             controller.getMetadata().getLong(android.media.MediaMetadata.METADATA_KEY_DURATION) : 0;
 
@@ -283,16 +312,11 @@ public class ProgressService extends Service {
 
     private MediaController getActiveMediaController() {
         try {
-            ComponentName notificationListener = new ComponentName(mContext, 
-                co.aospa.glyph.Services.NotificationService.class);
-            
-            List<MediaController> controllers = mMediaSessionManager.getActiveSessions(notificationListener);
-
-            if (controllers == null || controllers.isEmpty()) {
+            if (mCachedControllers == null || mCachedControllers.isEmpty()) {
                 return null;
             }
 
-            for (MediaController controller : controllers) {
+            for (MediaController controller : mCachedControllers) {
                 PlaybackState state = controller.getPlaybackState();
                 if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
                     return controller;
@@ -328,7 +352,7 @@ public class ProgressService extends Service {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            
+
             if (ACTION_PROGRESS_NOTIFICATION.equals(action)) {
                 String packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME);
                 int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1);
@@ -338,7 +362,7 @@ public class ProgressService extends Service {
                 if (packageName != null && notificationId != -1) {
                     ProgressInfo info = new ProgressInfo(packageName, notificationId, progress, max);
                     mActiveProgress.put(info.getKey(), info);
-                    
+
                     if (DEBUG) Log.d(TAG, "Progress stored: " + info.getKey() + " = " + info.getProgressPercent() + "%");
                 }
             } else if (ACTION_PROGRESS_REMOVED.equals(action)) {
@@ -348,9 +372,9 @@ public class ProgressService extends Service {
                 if (packageName != null && notificationId != -1) {
                     String key = packageName + ":" + notificationId;
                     mActiveProgress.remove(key);
-                    
+
                     if (DEBUG) Log.d(TAG, "Progress removed: " + key);
-                    
+
                     if (key.equals(mLastDisplayedKey)) {
                         mLastDisplayedProgress = -1;
                         mLastDisplayedKey = null;
