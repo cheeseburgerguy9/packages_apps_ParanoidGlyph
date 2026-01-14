@@ -170,12 +170,18 @@ public class SettingsFragment extends SettingsBasePreferenceFragment implements 
         updateScheduleSummary();
 
         mProgressPreference = (SwitchPreferenceCompat) findPreference(Constants.GLYPH_PROGRESS_ENABLE);
-        mProgressPreference.setEnabled(glyphEnabled);
-        mProgressPreference.setOnPreferenceChangeListener(this);
-
         mProgressMusicPreference = (SwitchPreferenceCompat) findPreference(Constants.GLYPH_PROGRESS_MUSIC_ENABLE);
-        mProgressMusicPreference.setEnabled(glyphEnabled && mProgressPreference.isChecked());
-        mProgressMusicPreference.setOnPreferenceChangeListener(this);
+
+        if (!ResourceUtils.getBoolean("glyph_settings_progress_support")) {
+            getPreferenceScreen().removePreference(mProgressPreference);
+            getPreferenceScreen().removePreference(mProgressMusicPreference);
+        } else {
+            mProgressPreference.setEnabled(glyphEnabled);
+            mProgressPreference.setOnPreferenceChangeListener(this);
+
+            mProgressMusicPreference.setEnabled(glyphEnabled && mProgressPreference.isChecked());
+            mProgressMusicPreference.setOnPreferenceChangeListener(this);
+        }
 
         IntentFilter filter = new IntentFilter("co.aospa.glyph.UPDATE_MAIN_SWITCH");
         requireContext().registerReceiver(mScheduleUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);

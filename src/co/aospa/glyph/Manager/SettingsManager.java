@@ -215,6 +215,9 @@ public final class SettingsManager {
 
     public static boolean isGlyphProgressEnabled() {
         Context ctx = getContext();
+        if (!ResourceUtils.getBoolean("glyph_settings_progress_support")) {
+            return false;
+        }
         return PreferenceManager.getDefaultSharedPreferences(ctx)
                 .getBoolean(Constants.GLYPH_PROGRESS_ENABLE, false) && isGlyphEnabled();
     }

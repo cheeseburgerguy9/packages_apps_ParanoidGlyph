@@ -29,4 +29,7 @@
         <item>@integer/glyph_settings_brightness_max</item>
     </integer-array>
 
+    <!-- Glyph Progress -->
+    <bool name="glyph_settings_progress_support" translatable="false">false</bool>
+
 </resources>
