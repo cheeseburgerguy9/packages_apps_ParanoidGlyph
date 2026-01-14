@@ -19,12 +19,15 @@
 package co.aospa.glyph;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.util.Log;
 
 import co.aospa.glyph.Constants.Constants;
 import co.aospa.glyph.Manager.GlyphScheduleManager;
+import co.aospa.glyph.Settings.SettingsActivity;
 import co.aospa.glyph.Utils.ServiceUtils;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
@@ -36,7 +39,13 @@ public class BootCompletedReceiver extends BroadcastReceiver {
     public void onReceive(final Context context, Intent intent) {
         if (DEBUG) Log.d(TAG, "Received boot completed intent");
         Constants.CONTEXT = context.getApplicationContext();
-        
+
+        // Refresh settings tile to fix random title and summary
+        PackageManager pm = context.getPackageManager();
+        ComponentName componentName = new ComponentName(context, SettingsActivity.class);
+        pm.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+        pm.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+
         if (GlyphScheduleManager.isScheduleEnabled(context)) {
             GlyphScheduleManager.setupScheduleAlarms(context);
             if (DEBUG) Log.d(TAG, "Schedule alarms restored on boot");
