@@ -57,6 +57,7 @@ public final class Constants {
     public static final String GLYPH_NOTIFS_SUB_CATEGORY = "glyph_settings_notifs_sub";
     public static final String GLYPH_NOTIFS_SUB_ENABLE = "glyph_settings_notifs_sub_toggle";
     public static final String GLYPH_NOTIFS_REVERSE_ANIMATION_ENABLE = "glyph_settings_notifs_sub_animations_reverse_toggle";
+    public static final String GLYPH_NOTIFS_ESSENTIAL_RECORDING_LED_ENABLE = "glyph_settings_notifs_essential_recording_led_enable";
     public static final String GLYPH_VOLUME_LEVEL_ENABLE = "glyph_settings_volume_level_toggle";
     public static final String GLYPH_AUTO_BRIGHTNESS_ENABLE = "glyph_settings_auto_brightness_toggle";
     public static final String GLYPH_FLIP_RINGER_MODE = "glyph_settings_flip_ringer_mode";

@@ -151,6 +151,54 @@ public final class AnimationManager {
         }
     }
 
+    public static void playRecordingAnimation(Context context) {
+        if (!check("recording_anim", false))
+            return;
+
+        acquireWakeLock(context);
+        StatusManager.setAnimationActive(true);
+
+        try {
+            playRecordingBreathing("recording_anim", 2, false);
+        } catch (InterruptedException e) {
+             if (DEBUG) Log.d(TAG, "Exception while playing animation, interrupted | name: recording_anim");
+        } finally {
+            FileUtils.writeSingleLed(17, 0);
+            StatusManager.setAnimationActive(false);
+            if (DEBUG) Log.d(TAG, "Done playing animation | name: recording_anim");
+            releaseWakeLock();
+        }
+    }
+
+    private static void playRecordingBreathing(String name, int repeat, boolean checkEssential) throws InterruptedException {
+        int count = 0;
+        while (repeat == -1 || count < repeat) {
+            if (checkEssential && !StatusManager.isEssentialLedActive()) break;
+            if (checkInterruption(name)) throw new InterruptedException();
+
+            // Breath Up
+            for (int i = 0; i <= 100; i++) {
+                if (checkEssential && !StatusManager.isEssentialLedActive()) break;
+                if (checkInterruption(name)) throw new InterruptedException();
+                int val = (int) (4095 * (i / 100.0f));
+                FileUtils.writeSingleLed(17, val);
+                Thread.sleep(5);
+            }
+
+            // Breath Down
+            for (int i = 100; i >= 0; i--) {
+                if (checkEssential && !StatusManager.isEssentialLedActive()) break;
+                if (checkInterruption(name)) throw new InterruptedException();
+                int val = (int) (4095 * (i / 100.0f));
+                FileUtils.writeSingleLed(17, val);
+                Thread.sleep(5);
+            }
+
+            Thread.sleep(200);
+            count++;
+        }
+    }
+
     public static void playCharging(int batteryLevel, boolean wait) {
         if (!check("charging", wait))
             return;
@@ -390,6 +438,30 @@ public final class AnimationManager {
 
     public static void playEssential() {
         if (DEBUG) Log.d(TAG, "Playing Essential Animation");
+
+        if (SettingsManager.isGlyphNotifsEssentialRecordingLedEnabled()) {
+            StatusManager.setEssentialLedActive(true);
+            submit(() -> {
+                if (!check("essential", true)) {
+                    StatusManager.setEssentialLedActive(false);
+                    return;
+                }
+
+                if (!StatusManager.isEssentialLedActive()) return;
+
+                acquireWakeLock(Constants.CONTEXT);
+                try {
+                    playRecordingBreathing("essential", -1, true);
+                } catch (InterruptedException ignored) {
+                } finally {
+                    FileUtils.writeSingleLed(17, 0);
+                    StatusManager.setEssentialLedActive(false);
+                    releaseWakeLock();
+                }
+            });
+            return;
+        }
+
         if (!StatusManager.isEssentialLedActive()) {
             submit(() -> {
                 if (!check("essential", true))
@@ -438,6 +510,12 @@ public final class AnimationManager {
     public static void stopEssential() {
         if (DEBUG) Log.d(TAG, "Disabling Essential Animation");
         StatusManager.setEssentialLedActive(false);
+
+        if (SettingsManager.isGlyphNotifsEssentialRecordingLedEnabled()) {
+            FileUtils.writeSingleLed(17, 0);
+            return;
+        }
+
         if (!StatusManager.isAnimationActive() && !StatusManager.isAllLedActive()) {
             if (Constants.getDevice().equals("phone3a")) {
                 updateLedFrame(new int[36]);
