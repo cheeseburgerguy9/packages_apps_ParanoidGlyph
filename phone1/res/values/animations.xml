@@ -26,6 +26,7 @@
     </string-array>
     <integer-array name="glyph_settings_animations_supported_pattern_lengths" translatable="false">
         <item>5</item>
+        <item>17</item>
     </integer-array>
 
     <!-- Battery Animations -->
