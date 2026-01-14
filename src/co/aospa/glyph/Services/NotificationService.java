@@ -188,6 +188,7 @@ public class NotificationService extends NotificationListenerService
             }
 
             if (progress >= 0 && maxProgress > 0 && !indeterminate) {
+                if (progress > maxProgress) progress = maxProgress;
                 Intent intent = new Intent(ProgressService.ACTION_PROGRESS_NOTIFICATION);
                 intent.putExtra(ProgressService.EXTRA_PACKAGE_NAME, sbn.getPackageName());
                 intent.putExtra(ProgressService.EXTRA_NOTIFICATION_ID, sbn.getId());
