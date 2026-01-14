@@ -439,7 +439,7 @@ public final class AnimationManager {
     public static void playEssential() {
         if (DEBUG) Log.d(TAG, "Playing Essential Animation");
 
-        if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
+        if (SettingsManager.isGlyphNotifsEssentialRecordingLedEnabled()) {
             StatusManager.setEssentialLedActive(true);
             submit(() -> {
                 if (!check("essential", true)) {
@@ -511,7 +511,8 @@ public final class AnimationManager {
         if (DEBUG) Log.d(TAG, "Disabling Essential Animation");
         StatusManager.setEssentialLedActive(false);
 
-        if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
+        if (SettingsManager.isGlyphNotifsEssentialRecordingLedEnabled()) {
+            FileUtils.writeSingleLed(17, 0);
             return;
         }
 

@@ -187,10 +187,10 @@ public final class SettingsManager {
                         false);
     }
 
-    public static boolean isGlyphNotifsRecordingLedEnabled() {
+    public static boolean isGlyphNotifsEssentialRecordingLedEnabled() {
         Context ctx = getContext();
         return PreferenceManager.getDefaultSharedPreferences(ctx)
-                .getBoolean(Constants.GLYPH_NOTIFS_RECORDING_LED_ENABLE,
+                .getBoolean(Constants.GLYPH_NOTIFS_ESSENTIAL_RECORDING_LED_ENABLE,
                         false) && isGlyphNotifsEnabled();
     }
 

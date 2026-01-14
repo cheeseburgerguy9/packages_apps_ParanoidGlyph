@@ -82,9 +82,17 @@ public class NotifsSettingsFragment extends SettingsBasePreferenceFragment imple
 
         mListPreference = (ListPreference) findPreference(Constants.GLYPH_NOTIFS_SUB_ANIMATIONS);
         mListPreference.setOnPreferenceChangeListener(this);
-        mListPreference.setEntries(ResourceUtils.getNotificationAnimations());
-        mListPreference.setEntryValues(ResourceUtils.getNotificationAnimations());
-        if (!ArrayUtils.contains(ResourceUtils.getNotificationAnimations(), mListPreference.getValue())) {
+        String[] notificationAnimations = ResourceUtils.getNotificationAnimations();
+        String[] entries = new String[notificationAnimations.length + 1];
+        String[] values = new String[notificationAnimations.length + 1];
+        System.arraycopy(notificationAnimations, 0, entries, 0, notificationAnimations.length);
+        System.arraycopy(notificationAnimations, 0, values, 0, notificationAnimations.length);
+        entries[notificationAnimations.length] = ResourceUtils.getString("glyph_settings_notifs_recording_light_pattern");
+        values[notificationAnimations.length] = "recording_light";
+
+        mListPreference.setEntries(entries);
+        mListPreference.setEntryValues(values);
+        if (!ArrayUtils.contains(values, mListPreference.getValue())) {
             mListPreference.setValue(ResourceUtils.getString("glyph_settings_notifs_animations_default"));
         }
 

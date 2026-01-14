@@ -27,10 +27,10 @@
         android:title="@string/glyph_settings_notifs_sub_toggle_title" />
 
         <SwitchPreferenceCompat
-            android:key="glyph_settings_notifs_recording_led_enable"
-            android:title="@string/glyph_settings_notifs_recording_led_title"
+            android:key="glyph_settings_notifs_essential_recording_led_enable"
+            android:title="@string/glyph_settings_notifs_essential_recording_led_title"
             android:defaultValue="false"
-            android:summary="@string/glyph_settings_notifs_recording_led_summary" />
+            android:summary="@string/glyph_settings_notifs_essential_recording_led_summary" />
 
         <ListPreference
             android:key="glyph_settings_notifs_sub_animations"
