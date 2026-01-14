@@ -144,7 +144,7 @@ public class NotificationService extends NotificationListenerService
                         && (interruptionFilter <= NotificationManager.INTERRUPTION_FILTER_ALL || packageCanBypassDnd)) {
             mThreadHandler.post(() -> {
                 if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
-                    AnimationManager.playRecordingBlink(mContext);
+                    AnimationManager.playRecordingAnimation(mContext);
                 } else if (SettingsManager.isGlyphNotifsAnimationReversed()) {
                     AnimationManager.playCsvReverse(mContext, SettingsManager.getGlyphNotifsAnimation());
                 } else {

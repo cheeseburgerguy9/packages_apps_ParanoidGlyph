@@ -72,7 +72,7 @@
     <string name="glyph_settings_sub_animations_reverse_toggle_summary">Play animation from end to beginning</string>
 
     <string name="glyph_settings_notifs_recording_led_title">Recording light</string>
-    <string name="glyph_settings_notifs_recording_led_summary">Use the recording light for notifications instead of Glyph patterns</string>
+    <string name="glyph_settings_notifs_recording_led_summary">Blink the recording light in a breathing pattern for notifications and loop for essential notifications</string>
 
     <string name="glyph_settings_notifs_permission_dialog_title">Notification Access Required</string>
     <string name="glyph_settings_notifs_permission_dialog_message">To use the Glyph Interface for notifications, you must grant notification access permissions.</string>

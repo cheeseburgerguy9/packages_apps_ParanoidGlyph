@@ -151,28 +151,51 @@ public final class AnimationManager {
         }
     }
 
-    public static void playRecordingBlink(Context context) {
-        if (!check("recording_blink", false))
+    public static void playRecordingAnimation(Context context) {
+        if (!check("recording_anim", false))
             return;
 
         acquireWakeLock(context);
         StatusManager.setAnimationActive(true);
 
         try {
-            for (int i = 0; i < 3; i++) {
-                if (checkInterruption("recording_blink")) throw new InterruptedException();
-                FileUtils.writeSingleLed(17, 4000);
-                Thread.sleep(200);
-                FileUtils.writeSingleLed(17, 0);
-                Thread.sleep(200);
-            }
+            playRecordingBreathing("recording_anim", 2, false);
         } catch (InterruptedException e) {
-             if (DEBUG) Log.d(TAG, "Exception while playing animation, interrupted | name: recording_blink");
+             if (DEBUG) Log.d(TAG, "Exception while playing animation, interrupted | name: recording_anim");
         } finally {
             FileUtils.writeSingleLed(17, 0);
             StatusManager.setAnimationActive(false);
-            if (DEBUG) Log.d(TAG, "Done playing animation | name: recording_blink");
+            if (DEBUG) Log.d(TAG, "Done playing animation | name: recording_anim");
             releaseWakeLock();
+        }
+    }
+
+    private static void playRecordingBreathing(String name, int repeat, boolean checkEssential) throws InterruptedException {
+        int count = 0;
+        while (repeat == -1 || count < repeat) {
+            if (checkEssential && !StatusManager.isEssentialLedActive()) break;
+            if (checkInterruption(name)) throw new InterruptedException();
+
+            // Breath Up
+            for (int i = 0; i <= 100; i++) {
+                if (checkEssential && !StatusManager.isEssentialLedActive()) break;
+                if (checkInterruption(name)) throw new InterruptedException();
+                int val = (int) (4095 * (i / 100.0f));
+                FileUtils.writeSingleLed(17, val);
+                Thread.sleep(5);
+            }
+
+            // Breath Down
+            for (int i = 100; i >= 0; i--) {
+                if (checkEssential && !StatusManager.isEssentialLedActive()) break;
+                if (checkInterruption(name)) throw new InterruptedException();
+                int val = (int) (4095 * (i / 100.0f));
+                FileUtils.writeSingleLed(17, val);
+                Thread.sleep(5);
+            }
+
+            Thread.sleep(200);
+            count++;
         }
     }
 
@@ -417,9 +440,26 @@ public final class AnimationManager {
         if (DEBUG) Log.d(TAG, "Playing Essential Animation");
 
         if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
-             StatusManager.setEssentialLedActive(true);
-             FileUtils.writeSingleLed(17, 4000);
-             return;
+            StatusManager.setEssentialLedActive(true);
+            submit(() -> {
+                if (!check("essential", true)) {
+                    StatusManager.setEssentialLedActive(false);
+                    return;
+                }
+
+                if (!StatusManager.isEssentialLedActive()) return;
+
+                acquireWakeLock(Constants.CONTEXT);
+                try {
+                    playRecordingBreathing("essential", -1, true);
+                } catch (InterruptedException ignored) {
+                } finally {
+                    FileUtils.writeSingleLed(17, 0);
+                    StatusManager.setEssentialLedActive(false);
+                    releaseWakeLock();
+                }
+            });
+            return;
         }
 
         if (!StatusManager.isEssentialLedActive()) {
@@ -472,7 +512,7 @@ public final class AnimationManager {
         StatusManager.setEssentialLedActive(false);
 
         if (SettingsManager.isGlyphNotifsRecordingLedEnabled()) {
-             FileUtils.writeSingleLed(17, 0);
+            return;
         }
 
         if (!StatusManager.isAnimationActive() && !StatusManager.isAllLedActive()) {
